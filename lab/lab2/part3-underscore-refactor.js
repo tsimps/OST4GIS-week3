@@ -26,70 +26,91 @@
 
   // Mock user input
   // Filter out according to these zip codes:
-  var acceptedZipcodes = [19106, 19107, 19124, 19111, 19118];
+  var acceptedZipcodes = [19106, 19107, 19124, 19111, 19118, 19143];
   // Filter according to enrollment that is greater than this variable:
   var minEnrollment = 300;
 
-
-  // clean data
-  for (var i = 0; i < schools.length - 1; i++) {
-    // If we have '19104 - 1234', splitting and taking the first (0th) element
-    // as an integer should yield a zip in the format above
-    if (typeof schools[i].ZIPCODE === 'string') {
-      split = schools[i].ZIPCODE.split(' ');
+  // helper function to clean up the zip codes
+  // If we have '19104 - 1234', splitting and taking the first (0th) element
+  // as an integer should yield a zip in the format above
+  var cleanZip = function(zip) {
+      if (typeof zip === 'string') {
+      split = zip.split(' ');
       normalized_zip = parseInt(split[0]);
-      schools[i].ZIPCODE = normalized_zip;
+      zip = normalized_zip;
     }
+  };
 
-    // Check out the use of typeof here — this was not a contrived example.
-    // Someone actually messed up the data entry
-    if (typeof schools[i].GRADE_ORG === 'number') {  // if number
-      schools[i].HAS_KINDERGARTEN = schools[i].GRADE_LEVEL < 1;
-      schools[i].HAS_ELEMENTARY = 1 < schools[i].GRADE_LEVEL < 6;
-      schools[i].HAS_MIDDLE_SCHOOL = 5 < schools[i].GRADE_LEVEL < 9;
-      schools[i].HAS_HIGH_SCHOOL = 8 < schools[i].GRADE_LEVEL < 13;
+  var assignGrades = function(dat) {
+    if (typeof dat.GRADE_ORG === 'number') {  // if number
+      dat.HAS_KINDERGARTEN = dat.GRADE_LEVEL < 1;
+      dat.HAS_ELEMENTARY = 1 < dat.GRADE_LEVEL < 6;
+      dat.HAS_MIDDLE_SCHOOL = 5 < dat.GRADE_LEVEL < 9;
+      dat.HAS_HIGH_SCHOOL = 8 < dat.GRADE_LEVEL < 13;
     } else {  // otherwise (in case of string)
-      schools[i].HAS_KINDERGARTEN = schools[i].GRADE_LEVEL.toUpperCase().indexOf('K') >= 0;
-      schools[i].HAS_ELEMENTARY = schools[i].GRADE_LEVEL.toUpperCase().indexOf('ELEM') >= 0;
-      schools[i].HAS_MIDDLE_SCHOOL = schools[i].GRADE_LEVEL.toUpperCase().indexOf('MID') >= 0;
-      schools[i].HAS_HIGH_SCHOOL = schools[i].GRADE_LEVEL.toUpperCase().indexOf('HIGH') >= 0;
+      dat.HAS_KINDERGARTEN = dat.GRADE_LEVEL.toUpperCase().indexOf('K') >= 0;
+      dat.HAS_ELEMENTARY = dat.GRADE_LEVEL.toUpperCase().indexOf('ELEM') >= 0;
+      dat.HAS_MIDDLE_SCHOOL = dat.GRADE_LEVEL.toUpperCase().indexOf('MID') >= 0;
+      dat.HAS_HIGH_SCHOOL = dat.GRADE_LEVEL.toUpperCase().indexOf('HIGH') >= 0;
     }
-  }
+  };
 
-  // filter data
+  // filter data helper functions
+
+  // takes an object and returns boolean, true if dat === "OPEN"
+  var isOpen = function(dat) {
+    return dat.toUpperCase() == 'OPEN';
+  }; // returns boolean
+
+  // takes an object and returns boolenan, true if dat is "CHARTER" or 'PRIVATE'
+  var isPublic = function(dat) {
+    return (dat.toUpperCase() !== 'CHARTER' || dat.toUpperCase() !== 'PRIVATE');
+  }; // returns boolean
+
+  // returns true if school is some form of K-12 school
+  var isSchool = function(dat) {
+    return (dat.HAS_KINDERGARTEN || dat.HAS_ELEMENTARY ||
+      dat.HAS_MIDDLE_SCHOOL ||
+      dat.HAS_HIGH_SCHOOL);
+    }; // returns boolean
+
+  var filterCondition = function(dat) {
+    filter_condition = (isOpen(dat.ACTIVE) &&
+                        isSchool(dat) &&
+                        dat.ENROLLMENT > minEnrollment &&
+                        acceptedZipcodes.indexOf(dat.ZIPCODE) >= 0);
+    return filter_condition;
+  };
+
+
+  // filter  data
   var filtered_data = [];
   var filtered_out = [];
-  for (var i = 0; i < schools.length - 1; i++) {
-    isOpen = schools[i].ACTIVE.toUpperCase() == 'OPEN';
-    isPublic = (schools[i].TYPE.toUpperCase() !== 'CHARTER' ||
-                schools[i].TYPE.toUpperCase() !== 'PRIVATE');
-    isSchool = (schools[i].HAS_KINDERGARTEN ||
-                schools[i].HAS_ELEMENTARY ||
-                schools[i].HAS_MIDDLE_SCHOOL ||
-                schools[i].HAS_HIGH_SCHOOL);
-    meetsMinimumEnrollment = schools[i].ENROLLMENT > minEnrollment;
-    meetsZipCondition = acceptedZipcodes.indexOf(schools[i].ZIPCODE) >= 0;
-    filter_condition = (isOpen &&
-                        isSchool &&
-                        meetsMinimumEnrollment &&
-                        !meetsZipCondition);
 
-    if (filter_condition) {
+  // clean data and filter data
+  for (var i = 0; i < schools.length - 1; i++) { // REPLACE THIS JAWN
+
+    // clean the zip code data and the grade level data
+    cleanZip(schools[i].ZIPCODE);
+    assignGrades(schools[i]);
+
+    // implement the filter and sort into two arrays
+    if (filterCondition(schools[i])) {
       filtered_data.push(schools[i]);
     } else {
       filtered_out.push(schools[i]);
     }
+
   }
+
+  // output to the console the level of cleaning & filtering for user validation
   console.log('Included:', filtered_data.length);
   console.log('Excluded:', filtered_out.length);
 
   // main loop
   var color;
-  for (var i = 0; i < filtered_data.length - 1; i++) {
-    isOpen = filtered_data[i].ACTIVE.toUpperCase() == 'OPEN';
-    isPublic = (filtered_data[i].TYPE.toUpperCase() !== 'CHARTER' ||
-                filtered_data[i].TYPE.toUpperCase() !== 'PRIVATE');
-    meetsMinimumEnrollment = filtered_data[i].ENROLLMENT > minEnrollment;
+
+  for (i = 0; i < filtered_data.length - 1; i++) {
 
     // Constructing the styling  options for our map
     if (filtered_data[i].HAS_HIGH_SCHOOL){
@@ -107,4 +128,12 @@
       .addTo(map);
   }
 
+
+
 })();
+
+/*
+Still to do:
+Refactor the loops using underscorejs
+?Try to find recurisive solution?
+*/
